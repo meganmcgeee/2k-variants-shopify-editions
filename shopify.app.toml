@@ -1,0 +1,29 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "c6da67c3ae8cd09f38ebd84af27ff53a"
+name = "editions-dev-2k-variants"
+handle = "editions-dev-2k-variants-12"
+application_url = "https://b45e-207-236-191-130.ngrok-free.app"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+dev_store_url = "birdygrace-development.myshopify.com"
+include_config_on_deploy = true
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "write_products"
+
+[auth]
+redirect_urls = [
+  "https://b45e-207-236-191-130.ngrok-free.app/auth/callback",
+  "https://b45e-207-236-191-130.ngrok-free.app/auth/shopify/callback",
+  "https://b45e-207-236-191-130.ngrok-free.app/api/auth/callback"
+]
+
+[webhooks]
+api_version = "2024-04"
+
+[pos]
+embedded = false
