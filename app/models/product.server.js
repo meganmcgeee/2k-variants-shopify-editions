@@ -1,40 +1,67 @@
-export function validateProduct(data) {
-  const errors = {};
-
-  if (!data.body_html) {
-    errors.body_html = "Description is required";
+// general purpose function to extract ID from GID string
+function unwrapId(gid) {
+  return gid.match(/\d+/)[0];
+}
+export async function productsAll(admin, session, currentPageInfo) {
+  const productPerPage = 5;
+  let variables = {};
+  if(currentPageInfo?.dir === "prev") {
+    variables =  {last: productPerPage, forwardCursor: currentPageInfo?.pageInfo};
+  } else {
+    variables =  {first: productPerPage, backCursor: currentPageInfo?.pageInfo};
   }
+  const query = `
+  query getProducts($first: Int, $last: Int, $forwardCursor: String, $backCursor: String) {
+      products(sortKey: TITLE, first: $first, last: $last, before: $forwardCursor, after: $backCursor) {
+        pageInfo {
+          startCursor
+          endCursor
+          hasNextPage
+          hasPreviousPage
+        }
+        nodes {
+          id
+          title
+          handle
+          featuredImage {
+            altText
+            url
+          }
+          variantsCount {
+            count
+          }
+        }
+      }
+    }
+  `;
 
-  data.variants.map((variant)=>{
-    if (Number(variant.price) < 5) {
-      errors[`variant-${variant.id}`] = "Variant price should be greater than $5";
+  const response = await admin.graphql(query,
+    {
+      variables: variables,
+    }
+  );
+
+  let {
+    data: { products: { nodes, pageInfo } },
+  } = await response.json();
+
+  const products = nodes.map((product) => {
+    return {
+      id: unwrapId(product.id),
+      image: {
+        src: product.featuredImage?.url,
+        alt: product.featuredImage?.altText,
+      },
+      title: product.title,
+      handle: product.handle,
+      variantsCount: product.variantsCount.count,
     }
   });
-
-  if (Object.keys(errors).length) {
-    return errors;
+  if (pageInfo?.hasNextPage) {
+    pageInfo['nextPage'] = { query: { pageInfo: pageInfo.endCursor, dir: "next" } };
   }
-}
-
-export async function productFind(admin, id) {
-  const responseData = await admin.rest.get({
-    path: `products/${id}`,
-  });
-  const { product } = await responseData.json();
-  return product;
-}
-
-export async function productsAll(admin, session, currentPageInfo) {
-  const { data, pageInfo } = await admin.rest.resources.Product.all({ ...currentPageInfo, session, limit: 5 });
-  const products = data.map((product)=>({...product, variantsCount: product.variants.length}));
+  if (pageInfo?.hasPreviousPage) {
+    pageInfo['prevPage'] = { query: { pageInfo: pageInfo.startCursor, dir: "prev" } };
+  }
   return { products, pageInfo };
-}
-
-export async function productUpdate(admin, id, data) {
-  const responseData = await admin.rest.put({
-    path: `products/${id}`,
-    data: {"product":{"body_html": data.body_html, variants: data.variants}},
-  });
-  const responseDataJson = await responseData.json();
-  return responseDataJson;
 }
